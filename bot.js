@@ -2,20 +2,21 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const http = require('http');
 
-console.log('Starting Meowzard Bot...');
-console.log('DISCORD_TOKEN loaded:', !!process.env.DISCORD_TOKEN);
+console.log('🚀 Starting Meowzard Bot...');
+console.log('🔒 DISCORD_TOKEN loaded:', !!process.env.DISCORD_TOKEN);
 
-// Check for missing env vars
+// Environment sanity check
 if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID || !process.env.GUILD_ID) {
-  console.error("❌ Missing environment variables. Please check .env or Render config.");
+  console.error("❌ Missing environment variables. Please set DISCORD_TOKEN, CLIENT_ID, and GUILD_ID.");
   process.exit(1);
 }
 
+// Create Discord client
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
-// Meow pool
+// Cat pool
 const normalCats = [
   "Tabby", "Calico", "Siamese", "Maine Coon", "Persian", "Bengal", "Russian Blue",
   "Scottish Fold", "Sphynx", "Ragdoll", "British Shorthair", "Norwegian Forest",
@@ -24,21 +25,22 @@ const normalCats = [
 ];
 const specialCat = "✨ Divine Meow (Legendary) ✨";
 
+// Random cat function
 function getRandomCat() {
   return Math.random() < 0.05
     ? specialCat
     : normalCats[Math.floor(Math.random() * normalCats.length)];
 }
 
-// Simple in-memory inventory
+// Inventory system
 const inventories = {};
 
-// Slash commands
+// Define slash commands
 const commands = [
   new SlashCommandBuilder().setName('ping').setDescription('Ping the bot'),
   new SlashCommandBuilder().setName('shutdown').setDescription('Shut down the bot'),
   new SlashCommandBuilder().setName('givemeow').setDescription('Get a random cat'),
-  new SlashCommandBuilder().setName('forcespawn').setDescription('Force-spawn a meow into the chat'),
+  new SlashCommandBuilder().setName('forcespawn').setDescription('Force-spawn a meow'),
   new SlashCommandBuilder().setName('inventory').setDescription('Show your cat collection'),
 ].map(cmd => cmd.toJSON());
 
@@ -58,10 +60,12 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   }
 })();
 
+// Bot event: ready
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
+// Bot event: command handler
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -71,7 +75,7 @@ client.on('interactionCreate', async interaction => {
   if (cmd === 'ping') {
     await interaction.reply('🏓 Pong from Meowzard!');
   } else if (cmd === 'shutdown') {
-    await interaction.reply('💤 Shutting down... Goodbye!');
+    await interaction.reply('😴 Shutting down...');
     client.destroy();
   } else if (cmd === 'givemeow') {
     const cat = getRandomCat();
@@ -84,24 +88,24 @@ client.on('interactionCreate', async interaction => {
   } else if (cmd === 'inventory') {
     if (!inventories[userId]) {
       await interaction.reply("😿 You don't have any cats yet! Use /givemeow to start!");
-      return;
+    } else {
+      const list = Object.entries(inventories[userId])
+        .map(([cat, count]) => `**${cat}** x${count}`)
+        .join('\n');
+      await interaction.reply(`📦 Your Cat Collection:\n${list}`);
     }
-    const inventoryList = Object.entries(inventories[userId])
-      .map(([cat, count]) => `**${cat}** x${count}`)
-      .join('\n');
-    await interaction.reply(`🐾 Your Cat Collection:\n${inventoryList}`);
   }
 });
 
-// Attempt to login
+// Login to Discord
 client.login(process.env.DISCORD_TOKEN).catch(err => {
   console.error('❌ Failed to login:', err);
 });
 
-// Render port server to keep bot alive
+// Keep Render alive with an HTTP server
 const server = http.createServer((req, res) => {
   res.writeHead(200);
-  res.end('🐱 Meowzard bot is awake and purring!');
+  res.end('Meowzard bot is awake and purring! 🐾');
 });
 
 const PORT = process.env.PORT || 3000;
