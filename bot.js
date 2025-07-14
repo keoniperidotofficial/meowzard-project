@@ -5,11 +5,17 @@ const http = require('http');
 console.log('Starting Meowzard Bot...');
 console.log('DISCORD_TOKEN loaded:', !!process.env.DISCORD_TOKEN);
 
+// Check for missing env vars
+if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID || !process.env.GUILD_ID) {
+  console.error("❌ Missing environment variables. Please check .env or Render config.");
+  process.exit(1);
+}
+
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+  intents: [GatewayIntentBits.Guilds],
 });
 
-// Cat pool
+// Meow pool
 const normalCats = [
   "Tabby", "Calico", "Siamese", "Maine Coon", "Persian", "Bengal", "Russian Blue",
   "Scottish Fold", "Sphynx", "Ragdoll", "British Shorthair", "Norwegian Forest",
@@ -24,9 +30,10 @@ function getRandomCat() {
     : normalCats[Math.floor(Math.random() * normalCats.length)];
 }
 
-// In-memory user inventory: { userId: { catName: count, ... } }
+// Simple in-memory inventory
 const inventories = {};
 
+// Slash commands
 const commands = [
   new SlashCommandBuilder().setName('ping').setDescription('Ping the bot'),
   new SlashCommandBuilder().setName('shutdown').setDescription('Shut down the bot'),
@@ -35,23 +42,24 @@ const commands = [
   new SlashCommandBuilder().setName('inventory').setDescription('Show your cat collection'),
 ].map(cmd => cmd.toJSON());
 
+// Register commands
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-const CLIENT_ID = process.env.CLIENT_ID;
-const GUILD_ID = process.env.GUILD_ID;
 
-// Register slash commands for your specific guild (testing)
 (async () => {
   try {
-    console.log('Refreshing slash commands...');
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-    console.log('Slash commands registered.');
+    console.log('📦 Registering slash commands...');
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      { body: commands }
+    );
+    console.log('✅ Slash commands registered.');
   } catch (err) {
-    console.error('Failed to register commands:', err);
+    console.error('❌ Failed to register commands:', err);
   }
 })();
 
 client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}`);
+  console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -61,44 +69,42 @@ client.on('interactionCreate', async interaction => {
   const cmd = interaction.commandName;
 
   if (cmd === 'ping') {
-    await interaction.reply('🏓 Pong from the dashboard bot!');
+    await interaction.reply('🏓 Pong from Meowzard!');
   } else if (cmd === 'shutdown') {
-    await interaction.reply('💤 Shutting down. Goodbye!');
+    await interaction.reply('💤 Shutting down... Goodbye!');
     client.destroy();
   } else if (cmd === 'givemeow') {
     const cat = getRandomCat();
-
     if (!inventories[userId]) inventories[userId] = {};
     inventories[userId][cat] = (inventories[userId][cat] || 0) + 1;
-
-    await interaction.reply(`You got a 🐱: **${cat}**! Added to your collection.`);
+    await interaction.reply(`🐱 You got: **${cat}**!`);
   } else if (cmd === 'forcespawn') {
     const cat = getRandomCat();
     await interaction.reply(`🚨 A wild **${cat}** has appeared! Adopt it now! 🐾`);
   } else if (cmd === 'inventory') {
     if (!inventories[userId]) {
-      await interaction.reply("You don't have any cats yet! You gotta adopt a cat when it spawns to get some.");
+      await interaction.reply("😿 You don't have any cats yet! Use /givemeow to start!");
       return;
     }
-    const userCats = inventories[userId];
-    const inventoryList = Object.entries(userCats)
+    const inventoryList = Object.entries(inventories[userId])
       .map(([cat, count]) => `**${cat}** x${count}`)
       .join('\n');
     await interaction.reply(`🐾 Your Cat Collection:\n${inventoryList}`);
   }
 });
 
+// Attempt to login
 client.login(process.env.DISCORD_TOKEN).catch(err => {
-  console.error('Failed to login:', err);
+  console.error('❌ Failed to login:', err);
 });
 
-// Tiny HTTP server to keep Render happy with an open port
+// Render port server to keep bot alive
 const server = http.createServer((req, res) => {
   res.writeHead(200);
-  res.end('Meowzard bot is awake and purring!');
+  res.end('🐱 Meowzard bot is awake and purring!');
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`HTTP server running on port ${PORT}`);
+  console.log(`🌐 HTTP server listening on port ${PORT}`);
 });
