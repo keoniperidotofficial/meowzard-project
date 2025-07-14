@@ -1,0 +1,13 @@
+{
+  "name": "cat-bot-inventory",
+  "version": "1.0.0",
+  "description": "Public Discord bot with slash commands and cat inventory system",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.0.0",
+    "dotenv": "^16.0.0"
+  }
+}
