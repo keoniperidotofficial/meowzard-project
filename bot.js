@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const http = require('http');
 
 console.log('Starting Meowzard Bot...');
 console.log('DISCORD_TOKEN loaded:', !!process.env.DISCORD_TOKEN);
@@ -45,7 +46,7 @@ const GUILD_ID = process.env.GUILD_ID;
     await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
     console.log('Slash commands registered.');
   } catch (err) {
-    console.error(err);
+    console.error('Failed to register commands:', err);
   }
 })();
 
@@ -76,7 +77,7 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply(`🚨 A wild **${cat}** has appeared! Adopt it now! 🐾`);
   } else if (cmd === 'inventory') {
     if (!inventories[userId]) {
-      await interaction.reply("You don't have any cats yet! you gotta adopt a cat when it spawns to get some.");
+      await interaction.reply("You don't have any cats yet! You gotta adopt a cat when it spawns to get some.");
       return;
     }
     const userCats = inventories[userId];
@@ -89,4 +90,15 @@ client.on('interactionCreate', async interaction => {
 
 client.login(process.env.DISCORD_TOKEN).catch(err => {
   console.error('Failed to login:', err);
+});
+
+// Tiny HTTP server to keep Render happy with an open port
+const server = http.createServer((req, res) => {
+  res.writeHead(200);
+  res.end('Meowzard bot is awake and purring!');
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`HTTP server running on port ${PORT}`);
 });
