@@ -1,10 +1,14 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
 
+console.log('Starting Meowzard Bot...');
+console.log('DISCORD_TOKEN loaded:', !!process.env.DISCORD_TOKEN);
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
+// Cat pool
 const normalCats = [
   "Tabby", "Calico", "Siamese", "Maine Coon", "Persian", "Bengal", "Russian Blue",
   "Scottish Fold", "Sphynx", "Ragdoll", "British Shorthair", "Norwegian Forest",
@@ -19,6 +23,7 @@ function getRandomCat() {
     : normalCats[Math.floor(Math.random() * normalCats.length)];
 }
 
+// In-memory user inventory: { userId: { catName: count, ... } }
 const inventories = {};
 
 const commands = [
@@ -26,17 +31,19 @@ const commands = [
   new SlashCommandBuilder().setName('shutdown').setDescription('Shut down the bot'),
   new SlashCommandBuilder().setName('givemeow').setDescription('Get a random cat'),
   new SlashCommandBuilder().setName('forcespawn').setDescription('Force-spawn a meow into the chat'),
-  new SlashCommandBuilder().setName('inventory').setDescription('Show your cat collection')
+  new SlashCommandBuilder().setName('inventory').setDescription('Show your cat collection'),
 ].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
 
+// Register slash commands for your specific guild (testing)
 (async () => {
   try {
-    console.log('Refreshing global slash commands...');
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log('Global slash commands registered.');
+    console.log('Refreshing slash commands...');
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+    console.log('Slash commands registered.');
   } catch (err) {
     console.error(err);
   }
@@ -59,15 +66,17 @@ client.on('interactionCreate', async interaction => {
     client.destroy();
   } else if (cmd === 'givemeow') {
     const cat = getRandomCat();
+
     if (!inventories[userId]) inventories[userId] = {};
     inventories[userId][cat] = (inventories[userId][cat] || 0) + 1;
+
     await interaction.reply(`You got a 🐱: **${cat}**! Added to your collection.`);
   } else if (cmd === 'forcespawn') {
     const cat = getRandomCat();
     await interaction.reply(`🚨 A wild **${cat}** has appeared! Adopt it now! 🐾`);
   } else if (cmd === 'inventory') {
     if (!inventories[userId]) {
-      await interaction.reply("You don't have any cats yet! Use /givemeow to get some.");
+      await interaction.reply("You don't have any cats yet! you gotta adopt a cat when it spawns to get some.");
       return;
     }
     const userCats = inventories[userId];
@@ -78,18 +87,6 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
-// Keep Render happy by starting a simple HTTP server
-const http = require('http');
-
-const server = http.createServer((req, res) => {
-  res.writeHead(200);
-  res.end('Meowzard bot is awake!');
+client.login(process.env.DISCORD_TOKEN).catch(err => {
+  console.error('Failed to login:', err);
 });
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`HTTP server running on port ${PORT}`);
-client.login(process.env.DISCORD_TOKEN);
-});
-
